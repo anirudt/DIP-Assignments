@@ -1,12 +1,14 @@
 import cv2
+import matplotlib.pyplot as plt
 import numpy as np
 import pdb
+from plotter import graphify
 
 def graphify(x, y, xlabel, ylabel, title, name):
     plt.xlabel(xlabel)
     plt.ylabel(ylabel)
     plt.title(title)
-    plt.plot(x, y)
+    plt.stem(x, y)
     plt.grid = True
     plt.savefig(name+'.png')
     plt.show()
@@ -19,6 +21,8 @@ def histogrammer(img):
   for num in range(img.shape[0]):
       hist[img[num]] += 1
   print hist
+
+  graphify(range(hist.shape[0]), hist, "", "Histogram","Histogram", "hist")
 
 def proc():
   # Load the image
