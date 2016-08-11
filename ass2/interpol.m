@@ -1,9 +1,9 @@
 % Interpolation techniques in MATLAB
-function y = interpol(img)
+function y = interpol()
 % Main function for testing out different kinds of interpolation techniques
-img = imread('cameraman.tif');
+img = imread('../imgs/cameraman.tif');
 y = NNinterpol(img, 512, 512);
-imshow(y);
+%imshow(y);
 end
 
 function interpolated = NNinterpol(img, M, N)
