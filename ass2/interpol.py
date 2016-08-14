@@ -4,7 +4,9 @@ import cv2
 import numpy as np
 import pdb
 
-def NNinterpol(img, M, N):
+def NNinterpol(img, size):
+    M = size[0]
+    N = size[1]
     R = img.shape[0]
     C = img.shape[1]
     j = np.floor(M/R)
@@ -14,7 +16,9 @@ def NNinterpol(img, M, N):
     cv2.imwrite("NNinterp.png", img)
     return img
 
-def BLinterpol(img, M, N):
+def BLinterpol(img, size):
+    M = size[0]
+    N = size[1]
     img = cv2.imread("../imgs/cameraman.tif", cv2.IMREAD_GRAYSCALE)
     R = img.shape[0]
     C = img.shape[1]
@@ -28,7 +32,7 @@ def BLinterpol(img, M, N):
     idx_out = np.outer(idx_cols, idx_rows)
     not_idx_out = np.logical_not(idx_out)
     # Created skeletal frame
-    NNint = NNinterpol(img, M, N)
+    NNint = NNinterpol(img,[M, N])
     col_shifted_NNint = np.roll(NNint,N-k,axis=1)
     col_shifted_NNint[:,N-k:] = 0
     row_shifted_NNint = np.roll(NNint, M-k, axis=0)
@@ -55,15 +59,35 @@ def BLinterpol(img, M, N):
     #cv2.imshow("image", out)
     #cv2.waitKey()
 
-def cart2pol(img, size):
+def cart2pol(img, size, R_min, R_max, theta_points):
     M = size[0]
     N = size[1]
+    theta, R = np.meshgrid(np.linspace(0, 2*np.pi, theta_points),
+                           np.arange(R_min, R_max))
+    cart_x = R * np.cos(theta) + M/2
+    cart_y = R * np.cos(theta) + N/2
+    cart_x = cart_x.astype(int)
+    cart_y = cart_y.astype(int)
+
+    polar_img = img[cart_x, cart_y]
+
+    # Arrange the image data in R-Theta form.
+    polar_img = polar_img.reshape((R_max - R_min, theta_points))
+    return polar_img
+    pdb.set_trace()
+
+
+
+def pol2cart(img, size):
     rows = np.arange(M)
     cols = np.arange(N)
     r_idx = np.sqrt((rows - M/2)*(rows-M/2) + (cols-N/2)*(cols-N/2)) * 2*D/M
     theta_idx = (np.arctan2(cols - N/2, rows - N/2) / math.pi + 0.5) * Theta
+    
+
 
 if __name__ == '__main__':
     img = cv2.imread("../imgs/cameraman.tif", cv2.IMREAD_GRAYSCALE)
-    BLinterpol(img, 1024, 1024)
-    #NNinterpol(img, 1024, 1024)
+    BLinterpol(img, [1024, 1024])
+    pol_img = cart2pol(img, [256, 256], 0, 128, 2000)
+    pol2cart()
