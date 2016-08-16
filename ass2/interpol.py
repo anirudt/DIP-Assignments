@@ -26,17 +26,12 @@ def read_czp():
             img[r, t] = val * np.iinfo(np.uint8).max / np.iinfo(np.uint16).max
 
     M = N = R*2
-    cart_img = np.zeros((M, N), dtype=np.uint8)
-    for r in xrange(R):
-        for t in xrange(T):
-            x = int(r*np.cos(t*2*np.pi/T)+M/2)
-            y = int(r*np.sin(t*2*np.pi/T)+N/2)
-            cart_img[x, y] = img[r, t]
-
+    cart_img = pol2cart(img, [M, N], 0)
     pdb.set_trace()
     cv2.imwrite("test_cart.bmp", cart_img)
 
-
+    cart2_img = pol2cart(cart2pol(cart_img,T,1),[M, N], 0)
+    cv2.imwrite("test_cart2.bmp", cart2_img)
 
 
 def NNinterpol(img, size):
@@ -94,36 +89,63 @@ def BLinterpol(img, size):
     #cv2.imshow("image", out)
     #cv2.waitKey()
 
-def cart2pol(img, size, R_min, R_max, theta_points):
-    M = size[0]
-    N = size[1]
-    theta, R = np.meshgrid(np.linspace(0, 2*np.pi, theta_points),
-                           np.arange(R_min, R_max))
-    cart_x = R * np.cos(theta) + M/2
-    cart_y = R * np.cos(theta) + N/2
-    cart_x = cart_x.astype(int)
-    cart_y = cart_y.astype(int)
-
-    polar_img = img[cart_x, cart_y]
-
-    # Arrange the image data in R-Theta form.
-    polar_img = polar_img.reshape((R_max - R_min, theta_points))
-    return polar_img
-    pdb.set_trace()
-
-
-
-def pol2cart(img, size):
-    rows = np.arange(M)
-    cols = np.arange(N)
-    r_idx = np.sqrt((rows - M/2)*(rows-M/2) + (cols-N/2)*(cols-N/2)) * 2*D/M
-    theta_idx = (np.arctan2(cols - N/2, rows - N/2) / math.pi + 0.5) * Theta
+def cart2pol(img, theta_points, vec):
+    M = img.shape[0]; N = img.shape[1];
+    if not vec:
+        T = theta_points; R = min(M/2, N/2)
+        pol_img = np.zeros((M/2, T))
+        for row in xrange(M):
+            for col in xrange(N):
+                r = int(np.sqrt((row-M/2)**2 + (col-N/2)**2))
+                t = int((np.arctan2(col-N/2, row-M/2)+np.pi)*T/(2*np.pi))
+                if r >= R or t >= T:
+                    continue
+                else:
+                    pol_img[r,t] = img[row, col]
+        return pol_img
     
+    else:
+        theta, R = np.meshgrid(np.linspace(0, 2*np.pi, theta_points),
+                               np.arange(min(M/2, N/2)))
+        cart_x = R * np.cos(theta) + M/2
+        cart_y = R * np.cos(theta) + N/2
+        cart_x = cart_x.astype(int)
+        cart_y = cart_y.astype(int)
+
+        polar_img = img[cart_x, cart_y]
+
+        # Arrange the image data in R-Theta form.
+        polar_img = polar_img.reshape((min(M/2, N/2), theta_points))
+        return polar_img
+
+
+
+def pol2cart(img, size, vec):
+    M = size[0]; N = size[1];
+    R = img.shape[0]; T = img.shape[1];
+    if not vec:
+        cart_img = np.zeros((M, N), dtype=np.uint8)
+        for r in xrange(R):
+            for t in xrange(T):
+                x = int(r*np.cos(t*2*np.pi/T)+M/2)
+                y = int(r*np.sin(t*2*np.pi/T)+N/2)
+                cart_img[x, y] = img[r, t]
+        return cart_img
+
+    else:
+        X, Y = np.meshgrid(np.arange(M), np.arange(N))
+        r = np.sqrt((X-M/2)**2 + (Y-N/2)**2)
+        theta = (np.arctan2(Y-N/2, X-M/2)+np.pi)*T/(2*np.pi)
+        r = r.astype(int)
+        theta = theta.astype(int)
+        pdb.set_trace()
+        img1 = []
+        return img1
 
 
 if __name__ == '__main__':
     read_czp()
-    #img = cv2.imread("../imgs/cameraman.tif", cv2.IMREAD_GRAYSCALE)
+    img = cv2.imread("../imgs/cameraman.tif", cv2.IMREAD_GRAYSCALE)
     #BLinterpol(img, [1024, 1024])
     #pol_img = cart2pol(img, [256, 256], 0, 128, 2000)
     #pol2cart()
