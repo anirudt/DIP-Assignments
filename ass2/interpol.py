@@ -3,11 +3,18 @@ import cProfile
 import cv2
 import numpy as np
 import pdb
+import optparse
+
+
+parser = optparse.OptionParser()
+parser.add_option("-a", action="store_true", default = False, dest="read_czp")
+parser.add_option("-b", action="store_true", default = False, dest="nnint")
+parser.add_option("-c", action="store_true", default = False, dest="blint")
+(opts, args) = parser.parse_args()
 
 def read_czp():
     f = open("test_polar.czp", "rb")
     header = f.read(16)
-    print header
     status_flag = int((f.read(1)).encode("hex"),16)
 
     byte = f.read(8)[::-1]
@@ -27,11 +34,10 @@ def read_czp():
 
     M = N = R*2
     cart_img = pol2cart(img, [M, N], 0)
-    pdb.set_trace()
-    cv2.imwrite("test_cart.bmp", cart_img)
+    cv2.imwrite("test_cart_wo_vec.bmp", cart_img)
 
-    cart2_img = pol2cart(cart2pol(cart_img,T,1),[M, N], 0)
-    cv2.imwrite("test_cart2.bmp", cart2_img)
+    cart_img = pol2cart(img, [M, N], 1)
+    cv2.imwrite("test_cart_vec.bmp", cart_img)
 
 
 def NNinterpol(img, size):
@@ -138,14 +144,26 @@ def pol2cart(img, size, vec):
         theta = (np.arctan2(Y-N/2, X-M/2)+np.pi)*T/(2*np.pi)
         r = r.astype(int)
         theta = theta.astype(int)
-        pdb.set_trace()
-        img1 = []
-        return img1
+        print img.shape
+        print r.shape
+        r_clip = np.clip(r, 0, R-1)
+        r_mask = np.array(r <= r_clip, dtype=np.uint8)
+        theta = theta % T
+        cart_img = img[r_clip, theta]
+        cart_img = np.multiply(cart_img, r_mask)
+        cart_img.reshape((M, N))
+        return cart_img
 
 
 if __name__ == '__main__':
-    read_czp()
-    img = cv2.imread("../imgs/cameraman.tif", cv2.IMREAD_GRAYSCALE)
+    if opts.read_czp:
+        read_czp()
+    if opts.nnint:
+        img = cv2.imread("../imgs/cameraman.tif", cv2.IMREAD_GRAYSCALE)
+        NNinterpol(img, [1024, 1024])
+    if opts.blint:
+        img = cv2.imread("../imgs/cameraman.tif", cv2.IMREAD_GRAYSCALE)
+        BLinterpol(img, [1024, 1024])
     #BLinterpol(img, [1024, 1024])
     #pol_img = cart2pol(img, [256, 256], 0, 128, 2000)
     #pol2cart()
