@@ -4,6 +4,41 @@ import cv2
 import numpy as np
 import pdb
 
+def read_czp():
+    f = open("test_polar.czp", "rb")
+    header = f.read(16)
+    print header
+    status_flag = int((f.read(1)).encode("hex"),16)
+
+    byte = f.read(8)[::-1]
+    R = int(byte.encode('hex'), 16)
+    byte = f.read(8)[::-1]
+    T = int(byte.encode("hex"), 16)
+
+    bpp = int(f.read(1).encode("hex"), 16)
+    
+    byte = "."
+    img = np.zeros((R, T), np.uint8)
+    for r in xrange(R):
+        for t in xrange(T):
+            byte = f.read(2)
+            val = int(byte.encode("hex"), 16)
+            img[r, t] = val * np.iinfo(np.uint8).max / np.iinfo(np.uint16).max
+
+    M = N = R*2
+    cart_img = np.zeros((M, N), dtype=np.uint8)
+    for r in xrange(R):
+        for t in xrange(T):
+            x = int(r*np.cos(t*2*np.pi/T)+M/2)
+            y = int(r*np.sin(t*2*np.pi/T)+N/2)
+            cart_img[x, y] = img[r, t]
+
+    pdb.set_trace()
+    cv2.imwrite("test_cart.bmp", cart_img)
+
+
+
+
 def NNinterpol(img, size):
     M = size[0]
     N = size[1]
@@ -87,7 +122,8 @@ def pol2cart(img, size):
 
 
 if __name__ == '__main__':
-    img = cv2.imread("../imgs/cameraman.tif", cv2.IMREAD_GRAYSCALE)
-    BLinterpol(img, [1024, 1024])
-    pol_img = cart2pol(img, [256, 256], 0, 128, 2000)
-    pol2cart()
+    read_czp()
+    #img = cv2.imread("../imgs/cameraman.tif", cv2.IMREAD_GRAYSCALE)
+    #BLinterpol(img, [1024, 1024])
+    #pol_img = cart2pol(img, [256, 256], 0, 128, 2000)
+    #pol2cart()
