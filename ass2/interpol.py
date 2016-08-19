@@ -10,6 +10,8 @@ parser = optparse.OptionParser()
 parser.add_option("-a", action="store_true", default = False, dest="read_czp")
 parser.add_option("-b", action="store_true", default = False, dest="nnint")
 parser.add_option("-c", action="store_true", default = False, dest="blint")
+parser.add_option("-d", action="store_true", default = False, dest="pol2cart")
+parser.add_option("-e", action="store_true", default = False, dest="cart2pol")
 (opts, args) = parser.parse_args()
 
 def read_czp():
@@ -39,7 +41,6 @@ def read_czp():
     cart_img = pol2cart(img, [M, N], 1)
     cv2.imwrite("test_cart_vec.bmp", cart_img)
 
-
 def NNinterpol(img, size):
     M = size[0]
     N = size[1]
@@ -48,14 +49,17 @@ def NNinterpol(img, size):
     j = np.floor(M/R)
     k = np.floor(N/C)
     repeat = np.ones((j, k))
-    img = np.array(np.kron(img, repeat), dtype=np.uint8)
-    cv2.imwrite("NNinterp.png", img)
-    return img
+    img2 = np.repeat(img, k, axis=0)
+    img2.reshape((R, N))
+    img3 = np.repeat(img2, j, axis=1)
+    img3.reshape((M, N))
+    #pdb.set_trace()
+    #cv2.imwrite("NNinterp.png", img3)
+    return img3
 
 def BLinterpol(img, size):
     M = size[0]
     N = size[1]
-    img = cv2.imread("../imgs/cameraman.tif", cv2.IMREAD_GRAYSCALE)
     R = img.shape[0]
     C = img.shape[1]
     # Scale factor
@@ -65,23 +69,19 @@ def BLinterpol(img, size):
     idx_rows = np.zeros(M)
     idx_cols[0:N:k] = 1
     idx_rows[0:M:k] = 1
-    idx_out = np.outer(idx_cols, idx_rows)
-    not_idx_out = np.logical_not(idx_out)
     # Created skeletal frame
-    NNint = NNinterpol(img,[M, N])
+    NNint = NNinterpol(img,size)
     col_shifted_NNint = np.roll(NNint,N-k,axis=1)
     col_shifted_NNint[:,N-k:] = 0
     row_shifted_NNint = np.roll(NNint, M-k, axis=0)
     row_shifted_NNint[M-k:,:] = 0
-    tmp = np.multiply(NNint, idx_out)
 
     weights_row_inter = np.kron(np.ones(C),np.arange(0,1,1.0/k))
-    rev_idx_row_inter = weights_row_inter[::-1]
     weights_col_inter = np.kron(np.ones(R),np.arange(0,1,1.0/k))
     
     # Interpolating the columns
     out = weights_row_inter * col_shifted_NNint + (1-weights_row_inter) * NNint
-    col_mask = np.kron(idx_cols, np.ones(N)).reshape((1024, 1024))
+    col_mask = np.kron(idx_cols, np.ones(N)).reshape((M, N))
     out_col = out * col_mask
     selected_rows = out_col[0:M:k,:]
     selected_rows = np.repeat(selected_rows, k, axis = 0)
@@ -90,10 +90,7 @@ def BLinterpol(img, size):
 
     out = (weights_col_inter * shifted_selected_rows.T + (1-weights_col_inter) * selected_rows.T).T
     out = np.array(out, dtype = np.uint8)
-
-    cv2.imwrite("BLinterp.png", out)
-    #cv2.imshow("image", out)
-    #cv2.waitKey()
+    #cv2.imwrite("BLinterp.png", out)
 
 def cart2pol(img, theta_points, vec):
     M = img.shape[0]; N = img.shape[1];
@@ -124,8 +121,6 @@ def cart2pol(img, theta_points, vec):
         polar_img = polar_img.reshape((min(M/2, N/2), theta_points))
         return polar_img
 
-
-
 def pol2cart(img, size, vec):
     M = size[0]; N = size[1];
     R = img.shape[0]; T = img.shape[1];
@@ -140,15 +135,15 @@ def pol2cart(img, size, vec):
 
     else:
         X, Y = np.meshgrid(np.arange(M), np.arange(N))
+        R_max = min(M/2, N/2)
         r = np.sqrt((X-M/2)**2 + (Y-N/2)**2)
-        theta = (np.arctan2(Y-N/2, X-M/2)+np.pi)*T/(2*np.pi)
+        theta = (np.arctan2(Y-N/2, X-M/2)+np.pi)*(T-1)/(2*np.pi)
         r = r.astype(int)
         theta = theta.astype(int)
         print img.shape
         print r.shape
         r_clip = np.clip(r, 0, R-1)
         r_mask = np.array(r <= r_clip, dtype=np.uint8)
-        theta = theta % T
         cart_img = img[r_clip, theta]
         cart_img = np.multiply(cart_img, r_mask)
         cart_img.reshape((M, N))
@@ -160,10 +155,17 @@ if __name__ == '__main__':
         read_czp()
     if opts.nnint:
         img = cv2.imread("../imgs/cameraman.tif", cv2.IMREAD_GRAYSCALE)
-        NNinterpol(img, [1024, 1024])
+        NNinterpol(img, [512, 512])
     if opts.blint:
         img = cv2.imread("../imgs/cameraman.tif", cv2.IMREAD_GRAYSCALE)
-        BLinterpol(img, [1024, 1024])
+        BLinterpol(img, [512, 512])
+    if opts.pol2cart:
+        img = cv2.imread("../imgs/cameraman.tif", cv2.IMREAD_GRAYSCALE)
+        pol2cart(img, [256, 256], 1)
+    if opts.cart2pol:
+        img = cv2.imread("../imgs/cameraman.tif", cv2.IMREAD_GRAYSCALE)
+        cart2pol(img, 256, 1)
+    #cart2pol(img, 256, 1)
+    #NNinterpol(img, [512, 512])
     #BLinterpol(img, [1024, 1024])
     #pol_img = cart2pol(img, [256, 256], 0, 128, 2000)
-    #pol2cart()
